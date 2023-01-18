@@ -3,12 +3,7 @@ pragma solidity ^0.8.9;
 
 import "./interfaces/ISolar.sol";
 import "hardhat/console.sol";
-/*
-githubtan import edince protocol desteklenmiyor dedi ve hardhat(406) errorunu verdi,
-openzeppelinden import edince hardhat(411) errorunu verdi ve openzeppelin yuklu degil dedi
-ben de boyle ekledim son care
-*/
-import "./IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /* 
 @title
@@ -73,7 +68,7 @@ contract SolarPanel is ISolar {
         uint256 amount,
         address walletAddress
     ) public payable {
-        IERC20(token).approve(walletAddress, amount);
+        // IERC20(token).approve(walletAddress, amount);
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         investors[walletAddress].balance += amount;
     }
@@ -87,6 +82,8 @@ contract SolarPanel is ISolar {
     /*
     burada transferFrom kullanmama sebebimiz zaten fonksiyon calisirken 
     otomatik olarak bu addressten gonderilecegi icin mi 
+
+    evet :)
     */
     function withdraw(
         address token,
@@ -113,9 +110,11 @@ contract SolarPanel is ISolar {
     @param
     @return
     */
-    function balanceOfInvestor(
-        address walletAddress
-    ) public view returns (uint256) {
+    function balanceOfInvestor(address walletAddress)
+        public
+        view
+        returns (uint256)
+    {
         require(
             walletAddress == msg.sender || owner == msg.sender,
             "You are not allowed to see the balance of this account."
@@ -141,10 +140,10 @@ contract SolarPanel is ISolar {
     @return
     */
     //bunlar aslinda sadece tokenlarla degil de basit sayilarla yapildigi icin aslinda payable olmasa da olur mu?
-    function investToSolarPanel(
-        address walletAddress,
-        uint256 investmentAmount
-    ) public payable {
+    function investToSolarPanel(address walletAddress, uint256 investmentAmount)
+        public
+        payable
+    {
         investors[walletAddress].balance -= investmentAmount;
         investors[walletAddress].investmentBalance += investmentAmount;
         investors[walletAddress].active = true;
@@ -157,10 +156,11 @@ contract SolarPanel is ISolar {
     @param
     @return
     */
-    function totalInvestmentDuration(
-        uint256 start,
-        uint256 end
-    ) internal pure returns (uint256) {
+    function totalInvestmentDuration(uint256 start, uint256 end)
+        internal
+        pure
+        returns (uint256)
+    {
         return end - start;
     }
 
@@ -171,9 +171,11 @@ contract SolarPanel is ISolar {
     @return
     */
 
-    function investmentDurationInMinutes(
-        address walletAddress
-    ) public view returns (uint256) {
+    function investmentDurationInMinutes(address walletAddress)
+        public
+        view
+        returns (uint256)
+    {
         uint256 timeSpan = totalInvestmentDuration(
             investors[walletAddress].start,
             investors[walletAddress].end
@@ -182,9 +184,11 @@ contract SolarPanel is ISolar {
         return timespanInMinutes;
     }
 
-    function calculateNetReturnOfInvestment(
-        address walletAddress
-    ) public view returns (uint256) {
+    function calculateNetReturnOfInvestment(address walletAddress)
+        public
+        view
+        returns (uint256)
+    {
         require(
             walletAddress == msg.sender || owner == msg.sender,
             "You are not allowed to calculate return of investment of this account."
