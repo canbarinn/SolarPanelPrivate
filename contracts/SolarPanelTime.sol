@@ -70,11 +70,13 @@ contract SolarPanelTime is ISolar {
 
 
   
-    function withdraw() public payable {
-        uint availableAmount = getAvailableWithdrawal();
-        // investors[msg.sender].availableWithdrawalBalance = availableAmount;
-        investors[msg.sender].withdrawedAmount = investors[msg.sender].withdrawedAmount + availableAmount;
-        IERC20(investors[msg.sender].investmentToken).transfer(msg.sender, availableAmount);
+    function withdraw(address token, uint amount) public payable {
+
+        // uint availableAmount = getAvailableWithdrawal();
+        investors[msg.sender].availableWithdrawalBalance = amount;
+        // IERC20(investors[msg.sender].investmentToken).transfer(msg.sender, availableAmount);
+        investors[msg.sender].withdrawedAmount += amount;
+        IERC20(token).transfer(msg.sender, amount);
         console.log("withdraw function");
     }
 

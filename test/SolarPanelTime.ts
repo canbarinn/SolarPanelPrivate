@@ -75,7 +75,7 @@ it("Withdraw function is working", async () =>  {
 
   await solar
     .connect(accounts[0])
-    .withdraw();
+    .withdraw(token.address, 50);
 
     console.log((await token.balanceOf(accounts[0].address)).toString());
 
