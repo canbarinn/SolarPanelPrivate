@@ -79,7 +79,7 @@ it("Withdraw function is working", async () =>  {
 
     console.log((await token.balanceOf(accounts[0].address)).toString());
 
-  const withdrawedAmount = await solar.getWithdrawedAmount();
+  const withdrawedAmount = await solar.getWithdrawedAmount(accounts[0].address);
 
   expect(withdrawedAmount).eq(50);
 

@@ -29,8 +29,8 @@ contract SolarPanelTime is ISolar {
         IERC20(token).transferFrom(msg.sender, address(this), investmentAmount);
         investors[msg.sender].initialInvestmentTime = block.timestamp;
         investors[msg.sender].balance = investmentAmount;
-        investors[msg.sender].availableWithdrawalBalance = 0;
-        investors[msg.sender].withdrawedAmount = 0;
+        investors[msg.sender].availableWithdrawalBalance;
+        investors[msg.sender].withdrawedAmount;
         console.log("deposit token from msg.sender address to the contract's address");
         
 
@@ -62,12 +62,16 @@ contract SolarPanelTime is ISolar {
         return investors[msg.sender].balance;
     }
         
-    function getWithdrawedAmount() public view returns(uint) {
-        uint withdrawed = investors[msg.sender].withdrawedAmount;
+    function getWithdrawedAmount(address investorAccount) public view returns(uint) {
+        uint withdrawed = investors[investorAccount].withdrawedAmount;
         console.log("get total withdrawed amount since the initial investment");
         return withdrawed;
     }
 
+    function increaseWithdrawedAmount(uint amount) public {
+        investors[msg.sender].withdrawedAmount = amount + investors[msg.sender].withdrawedAmount;
+        console.log("increases withdrawed amount");
+    }
 
   
     function withdraw(address token, uint amount) public payable {
@@ -75,7 +79,7 @@ contract SolarPanelTime is ISolar {
         // uint availableAmount = getAvailableWithdrawal();
         investors[msg.sender].availableWithdrawalBalance = amount;
         // IERC20(investors[msg.sender].investmentToken).transfer(msg.sender, availableAmount);
-        investors[msg.sender].withdrawedAmount += amount;
+        increaseWithdrawedAmount(amount);
         IERC20(token).transfer(msg.sender, amount);
         console.log("withdraw function");
     }
