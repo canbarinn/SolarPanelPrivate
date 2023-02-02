@@ -21,6 +21,18 @@ describe("Solar", function () {
     ).timestamp;
   };
 
+  let createProject = async () => {
+    const projectID = await solar.createProject(
+      10,
+      await currentTimestamp(),
+      (await currentTimestamp()) + 60 * 60 * 24 * 365 * 15,
+      dollars("50"),
+      3
+    ); // you may not be able to directly use "=" here. if not, try using the receipt.
+
+    return projectID;
+  };
+
   beforeEach(async () => {
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!
     // ** I EXPECT THIS TO WORK BEFORE EVERY "it",
@@ -43,7 +55,12 @@ describe("Solar", function () {
     it("project IDs increment sequentially", async () => {});
   });
   describe("Investor actions", () => {
-    it("investor can't invest more than their balance", async () => {});
+    it("investor can't invest more than their balance", async () => {
+      const projectID = await createProject();
+      await expect(
+        await solar.invest(projectID, dollars("100000"))
+      ).to.be.revertedWith("Insufficient balance!");
+    });
     it("investor can't invest non-existing project", async () => {});
     it("investor can only invest before end time", async () => {});
     it("investor can't invest if capacity is full", async () => {});
@@ -53,21 +70,7 @@ describe("Solar", function () {
     it("profit calculation is correct for single project profit withdrawal", async () => {});
     it("profit calculation is correct for batch projects profit withdrawal", async () => {});
   });
-  it("Example", async function () {
-    const depositAmount = dollars("10");
 
-    const projectID = await solar.createProject(
-      10,
-      await currentTimestamp(),
-      (await currentTimestamp()) + 60 * 60 * 24 * 365 * 15,
-      dollars("50"),
-      3
-    ); // you may not be able to directly use "=" here. if not, try using the receipt.
-
-    await token.connect(accounts[0]).approve(solar.address, depositAmount); // solar panel'e benim yerime para harcayabilmesi icin approve veriyorum
-    // await solar.connect(accounts[0]).invest(projectID, dollars("1"));
-    // await solar.withdrawProfit(projectID);
-  });
   /**
    * Side note: we can set the end time for projects 15 years after than start date
    * Business logic is: we would like to be able to collect money both before installing the panels,
