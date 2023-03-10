@@ -8,7 +8,7 @@ contract Solar {
     address public owner;
     address public token;
     uint projectIdCounter;
- 
+
     mapping(uint256 => Project) projects; // projectID => Project
     mapping(address => Investor) investors; // investor address => Investor
 
@@ -56,8 +56,7 @@ contract Solar {
         projects[projectID].start = start;
         projects[projectID].end = end;
         projects[projectID].capacity = capacity;
-        projects[projectID]
-            .maxInvestmentsPerInvestor = maxInvestmentsPerInvestor;
+        projects[projectID].maxInvestmentsPerInvestor = maxInvestmentsPerInvestor;
 
         emit ProjectCreated(projectID);
 
@@ -68,87 +67,45 @@ contract Solar {
     }
 
     function invest(uint256 projectID, uint256 amount) public {
-        require(
-            IERC20(token).balanceOf(msg.sender) >= amount,
-            "Insufficient balance!"
-        );
+        require(IERC20(token).balanceOf(msg.sender) >= amount, "Insufficient balance!");
 
-        require(
-            projectID <= projectIdCounter,
-            "The project with this ID is non-existent!"
-        );
+        require(projectID <= projectIdCounter, "The project with this ID is non-existent!");
         require(getRemainingCapacity(projectID) >= amount, "Capacity is full!");
-        require(
-            projects[projectID].maxInvestmentsPerInvestor >= amount,
-            "You should invest less amount!"
-        );
+        require(projects[projectID].maxInvestmentsPerInvestor >= amount, "You should invest less amount!");
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         projects[projectID].investors.push(msg.sender);
-        investors[msg.sender].investments[projectID].push(
-            Investment(block.timestamp, amount)
-        );
+        investors[msg.sender].investments[projectID].push(Investment(block.timestamp, amount));
         investors[msg.sender].investedProjects.push(projectID);
         console.log("investment processed");
     }
 
-    function withdrawProfit(uint256 projectID) public {
+    function withdrawSingleProjectProfit(uint256 projectID) public {
         // let's give all the profits for all investments for projectID
+        uint totalProfit = calculateProfit(projectID);
+        console.log(totalProfit);
+        IERC20(token).transfer(msg.sender, totalProfit);
+        //accountun para hesabına bak
     }
 
-    function withdrawProfit() public {
+    function withdrawProfit() public returns (uint allProfitCounter) {
         // let's give all the profits for all investments for all projects
         // this function should loop through each projectID and calculateProfit(), and then aggregate
+
+        for (uint projectID = 1; projectID <= projectIdCounter; projectID++) {
+            uint profitHolder = calculateProfit(projectID);
+            allProfitCounter += profitHolder;
+        }
+        console.log(allProfitCounter);
+
+        IERC20(token).transfer(msg.sender, allProfitCounter);
     }
 
-    function calculateProfit(uint256 projectID) public view returns (uint256) {
-        // investor can invest multiple times, thus this function should loop through each investment with the projectID
-        // and then aggregate the results
-
-        //i indexindeki döngü çalışacak, her bir investmentİnformation uzunluğu kadaar index dönerek
-        //amount ve blocktimestamp değerleri üzreinden tek tek döngü yapacak.
-  
-
-        uint256 profitCounter = 0;
-
-
-        for(uint256 i=0; i < investors[msg.sender].investments[projectID].length; i++) {
-            uint invested = investors[msg.sender].investments[projectID][i].amount; 
-            uint latestTimestamp = investors[msg.sender].investments[projectID][i].latestTimestamp;
-            uint timePassed = block.timestamp - latestTimestamp;
-            uint result = calculationTester(invested, timePassed);
-            profitCounter += result;
-            return profitCounter;
-    } }
-
-    function calculationTester(uint invested, uint withdrawTime) public view returns(uint) {
-    
-        //isimleri düzenle ve first half second half diye iki tane tarafta ayrı ayrı toparla fonksiyonları
-        uint investment = invested;
-        uint secsInAYear = 31535000;
-        uint projectHalfLife = 10 * secsInAYear;
-        uint withdrawTime = 15 * secsInAYear; //burası açık olursa hesap tam tutuyor, kapalı olursa zamanda sıkıntı oluyor. Bunu testte çalışmak lazım.
-
-        uint yUst = ((withdrawTime-projectHalfLife)*(9*investment)) + (investment*projectHalfLife);
-        uint yAlt = 10 * secsInAYear * projectHalfLife;
-        console.log(yUst, yAlt);
-        console.log(yUst/yAlt);
-        uint result = ((yUst * secsInAYear * 10 + investment * yAlt) * (withdrawTime - projectHalfLife)) / (20 * secsInAYear * yAlt);
-        //result = (((yustu* secs_year *10)+(investment*yalt))*(withdrawTime-projectHalfLife))/(20*secs_year*yalt)
-        return result + investment; 
 
 
 
-    }
 
-    
-
-
-    function getRemainingCapacity(
-        uint256 projectID
-    ) public view returns (uint256) {
-        return
-            projects[projectID].capacity -
-            projects[projectID].totalInvestorAmount;
+    function getRemainingCapacity(uint256 projectID) public view returns (uint256) {
+        return projects[projectID].capacity - projects[projectID].totalInvestorAmount;
     }
 
     function getOwner() public view returns (address) {
@@ -156,18 +113,48 @@ contract Solar {
     }
 
     //For Testing Purposes------------------
-    function balanceOfInvestor(
-        address investor,
-        uint256 projectID
-    ) public view returns (uint) {
+    function balanceOfInvestor(address investor, uint256 projectID) public view returns (uint) {
         return investors[investor].investments[projectID][0].amount;
     }
 
-    function getInvestmentTime(
-        address investor,
-        uint256 projectID
-    ) public view returns (uint) {
+    function getInvestmentTime(address investor, uint256 projectID) public view returns (uint) {
         return investors[investor].investments[projectID][0].latestTimestamp;
     }
+
     //For Testing Purposes------------------
+
+    function calculateProfit(uint projectID) public view returns (uint) {
+        console.log("zaman fonk",block.timestamp);
+        uint secondHalfProfitCounter = 0;
+        uint firstHalfProfitCounter = 0;
+
+        for (uint i = 0; i < investors[msg.sender].investments[projectID].length; i++) {
+            uint investment = investors[msg.sender].investments[projectID][i].amount;
+            uint latestTimestamp = investors[msg.sender].investments[projectID][i].latestTimestamp;
+            uint withdrawTime = block.timestamp - latestTimestamp;
+            uint secsInAYear = 31535000;
+            uint projectDuration = 20;
+            uint projectHalfLife = (projectDuration / 2) * secsInAYear;
+            if (withdrawTime > projectHalfLife) {
+                uint yUst = ((withdrawTime - projectHalfLife) * (9 * investment)) + (investment * projectHalfLife);
+                uint yAlt = 10 * secsInAYear * projectHalfLife;
+                uint result = ((investment * projectHalfLife) / (10 * secsInAYear)) +
+                    ((yUst * secsInAYear * 10 + investment * yAlt) * (withdrawTime - projectHalfLife)) /
+                    (20 * secsInAYear * yAlt);
+                secondHalfProfitCounter += result;
+                console.log("result2", result);
+            } else if (withdrawTime <= projectHalfLife) {
+                uint profitNumerator = investment * withdrawTime;
+                uint profitDenominator = 10 * secsInAYear;
+                uint result = profitNumerator / profitDenominator;
+                firstHalfProfitCounter += result;
+                console.log("result1", result);
+            }
+        }
+
+        uint netProfit = firstHalfProfitCounter + secondHalfProfitCounter;
+        return netProfit;
+    }
+
+    
 }

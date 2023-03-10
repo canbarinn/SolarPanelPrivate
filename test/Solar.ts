@@ -65,20 +65,18 @@ describe("Solar", function () {
       //  console.log(ownAct);
       //  expect(ownAct).to.be.revertedWith("Caller is not the owner!");
 
-      await expect(solar.connect(accounts[0]).createProject(1,1,1,1,1)).to.be.revertedWith("Caller is not the owner!");
-
+      await expect(
+        solar.connect(accounts[0]).createProject(1, 1, 1, 1, 1)
+      ).to.be.revertedWith("Caller is not the owner!");
     });
 
     it("project IDs increment sequentially", async () => {
-
       const tx = await solar.createProject(1, 1, 1, 1, 5);
       //console.log(tx);
       const receipt = await tx.wait();
       //console.log(receipt);
       const projectIdGetter1 = receipt.events[0].args[0].toString();
       //console.log(projectIdGetter1);
-   
-
 
       const tx2 = await solar.createProject(2, 2, 2, 2, 2);
       //console.log(tx2);
@@ -88,37 +86,31 @@ describe("Solar", function () {
       const projectIdGetter2 = receipt2.events[0].args[0].toString();
       //console.log(projectIdGetter2);
 
-      await expect((+projectIdGetter1)+1).to.be.eq(+projectIdGetter2);
+      await expect(+projectIdGetter1 + 1).to.be.eq(+projectIdGetter2);
       // console.log(receipt.events[0].args[0].toString());
-
     });
   });
   describe("Investor actions", () => {
     it("investor can't invest more than their balance", async () => {
-
       const tx = await solar.createProject(1, 1, 1, 1, 1);
       //console.log(tx);
       const receipt = await tx.wait();
       //console.log(receipt.events);
       const projectIdGetter = receipt.events[0].args[0].toString();
-      
+
       const balance = await token.balanceOf(accounts[0].address);
       const investAmount = balance.add(1);
 
       await token.connect(accounts[0]).approve(solar.address, investAmount);
-      
+
       await expect(
-        solar.connect(accounts[0]).invest((+projectIdGetter), investAmount)
-        ).to.be.revertedWith("Insufficient balance!");
-
-
+        solar.connect(accounts[0]).invest(+projectIdGetter, investAmount)
+      ).to.be.revertedWith("Insufficient balance!");
 
       // const time = (
       //   await solar.getInvestmentTime(accounts[0].address, 1)
       // ).toString();
       // await console.log("time is " + time);
-
-      
 
       // -----------------TRY 2 (solar.addresse mint ettim, parayı buraya yolluyorum)
       // await token.approve(solar.address, dollars("999"));
@@ -133,82 +125,170 @@ describe("Solar", function () {
 
       // const time = (await solar.getInvestmentTime(accounts[0].address, 1)).toString();
       //   await console.log("time is " + time);
-
-      
-
-
     });
     it("investor can't invest non-existing project", async () => {
+      await token.connect(accounts[0]).approve(solar.address, dollars("929"));
 
-      await token.connect(accounts[0]).approve(solar.address,dollars("929"));
-
-      const tx = await solar.createProject(1,1,1,1,1);
+      const tx = await solar.createProject(1, 1, 1, 1, 1);
       const receipt = await tx.wait();
 
       const projectIdForTesting = receipt.events[0].args[0].toString();
-      const nonExistingProjectId = (+projectIdForTesting + 1000000);
+      const nonExistingProjectId = +projectIdForTesting + 1000000;
       //const receipt = await tx.wait();
-      await expect( solar.connect(accounts[0]).invest(nonExistingProjectId, dollars("45"))).to.be.revertedWith("The project with this ID is non-existent!");
-      
-
+      await expect(
+        solar.connect(accounts[0]).invest(nonExistingProjectId, dollars("45"))
+      ).to.be.revertedWith("The project with this ID is non-existent!");
     });
     it("investor can only invest before end time", async () => {});
     it("investor can't invest if capacity is full", async () => {
-      await token.connect(accounts[0]).approve(solar.address,dollars("977"));
+      await token.connect(accounts[0]).approve(solar.address, dollars("977"));
       //kapasite diye bir değişken koy +1ini ver
-      const tx = await solar.createProject(1,1,1,0,1);
-  
+      const tx = await solar.createProject(1, 1, 1, 0, 1);
+
       const receipt = await tx.wait();
 
       const projectIdGetter = receipt.events[0].args[0].toString();
 
       await expect(
         solar.connect(accounts[0]).invest(projectIdGetter, dollars("27"))
-        ).to.be.revertedWith("Capacity is full!");
-
+      ).to.be.revertedWith("Capacity is full!");
     });
     it("investor can't invest more than 'maxInvestmentsPerInvestor'", async () => {
-
       //BU KODUN BAŞTAN AŞAĞI DÜZENLENMESİ LAZIM
-
-
       // await token.connect(accounts[0]).approve(solar.address,dollars("1000"));
       // const tx = await solar.createProject(5,5,5,5,5);
-
-
       // const receipt = await tx.wait();
-
-
       // const maxInvestmentsGetter = receipt.events[0].args[1].toString();
-
       // const higherInvestment = (+maxInvestmentsGetter + 100 )
-
       // await expect(
       //   solar.connect(accounts[0]).invest(1,higherInvestment)
       //   ).to.be.revertedWith( "You should invest less amount!");
-     
     });
   });
   describe("Calculation", () => {
-    it("profit calculation is correct for single project profit withdrawal", async () => {
+    it("profit calculation and withdrawal tester", async () => {
       //kapasite diye bir değişken koy +1ini ver
-      await token.connect(accounts[0]).approve(solar.address, dollars("999"));
+      await token.connect(accounts[0]).approve(solar.address, dollars("1000"));
       const secondsInAYear = 31536000;
-      const tx = await solar.createProject(100,100,100,1000000000000,1000000000000);
+      const tx = await solar.createProject(
+        100,
+        100,
+        100,
+        1000000000000,
+        1000000000000
+      );
       const receipt = await tx.wait();
       const projectIdGetter = receipt.events[0].args[0].toString();
 
-      await solar.connect(accounts[0]).invest(+projectIdGetter, dollars("100"));
-      //await solar.connect(accounts[0]).invest(+projectIdGetter, dollars("1"));
-      const current = await time.increase(secondsInAYear * 15);
+      const contractMoney1 = await token.balanceOf(solar.address);
+      console.log("contract1", contractMoney1);
 
-      
-      const calculation = await solar.connect(accounts[0]).calculationTester(100, current);
-      console.log(calculation);
+      await solar.connect(accounts[0]).invest(+projectIdGetter, dollars("100"));
+      await solar.connect(accounts[0]).invest(+projectIdGetter, dollars("100"));
+
+      const contractMoney2 = await token.balanceOf(solar.address);
+      console.log("contract2", contractMoney2);
+
+      const moneyBeforeTransferred = await token.balanceOf(accounts[0].address);
+      console.log("investor address balance", moneyBeforeTransferred);
+      await time.increase(secondsInAYear * 15);
+
+      await solar
+        .connect(accounts[0])
+        .withdrawSingleProjectProfit(projectIdGetter);
+
+      const contractMoney3 = await token.balanceOf(solar.address);
+      console.log("contract3", contractMoney3);
+
+      const moneyTransferred = await token.balanceOf(accounts[0].address);
+      console.log("investor address balance", moneyTransferred);
       // expect(await +calculation ).to.be.eq(4000);
+    });
+    it("profit calculation all projects tester", async () => {
+      //contract balance checker1
+      const contractBalance1 = await token.balanceOf(solar.address);
+      console.log("contract balance1", contractBalance1);
+      //approved amount of token to transfer from account to contract
+      await token.connect(accounts[0]).approve(solar.address, dollars("10000"));
+      const secondsInAYear = 31536000;
+      //creating first project and getting the ID of the project
+      const tx = await solar.createProject(
+        100,
+        100,
+        100,
+        1000000000000,
+        1000000000000
+      );
+      const receipt = await tx.wait();
+      const projectIDGetter = receipt.events[0].args[0].toString();
+      console.log(projectIDGetter);
+      //creating second project and getting the ID of it
+      const tx2 = await solar.createProject(
+        100,
+        100,
+        100,
+        1000000000000,
+        1000000000000
+      );
+      const receipt2 = await tx2.wait();
+      const projectIDGetter2 = receipt2.events[0].args[0].toString();
+      console.log(projectIDGetter2);
+
+      //Investing in first project
+      await solar.connect(accounts[0]).invest(projectIDGetter, dollars("19"));
+      //Investing in second project
+      await solar.connect(accounts[0]).invest(projectIDGetter2, dollars("18"));
+
+      //contract balance checker2
+      const contractBalance2 = await token.balanceOf(solar.address);
+      console.log("contract balance2", contractBalance2);
+
+      //Checking the amounts in the Investment struct
+      const balance1 = await solar
+        .connect(accounts[0])
+        .balanceOfInvestor(accounts[0].address, projectIDGetter);
+      console.log(balance1);
+      const balance2 = await solar
+        .connect(accounts[0])
+        .balanceOfInvestor(accounts[0].address, projectIDGetter2);
+      console.log(balance2);
+
+      await time.increase(15 * secondsInAYear);
+      //calculating balance of single project
+      const singleProfit = await solar
+        .connect(accounts[0])
+        .withdrawSingleProjectProfit(projectIDGetter2);
+      //calculating balance of all projects
+      const totalProfit = await solar.connect(accounts[0]).withdrawProfit();
+
+      const contractBalance3 = await token.balanceOf(solar.address);
+      console.log("contract balance3", contractBalance3);
+    });
+    it("first half calculation test", async () => {
+      await token.connect(accounts[0]).approve(solar.address, dollars("1000"));
+
+      const secondsInAYear = 31536000;
+      const tx = await solar.createProject(
+        100,
+        100,
+        100,
+        1000000000000,
+        1000000000000
+      );
+      const receipt = await tx.wait();
+      const projectIdGetter = receipt.events[0].args[0].toString();
+      
+      await solar.connect(accounts[0]).invest(projectIdGetter, dollars("100"));
+
+      await time.increase(7 * secondsInAYear);
+      console.log("zaman test",(await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp);
+
+      const profit = await solar.connect(accounts[0]).calculateProfitReal(projectIdGetter);
+      console.log("profit" , profit);
 
 
     });
+    it("profit calculation is correct for single project profit withdrawal", async () => {});
     it("profit calculation is correct for batch projects profit withdrawal", async () => {});
   });
 
