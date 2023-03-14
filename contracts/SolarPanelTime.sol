@@ -122,3 +122,36 @@
 
 // }
 
+// ---------------------------------------------------------
+    // function calculateProfit(uint projectID) public view returns (uint) {
+    //     console.log("zaman fonk", block.timestamp);
+    //     uint secondHalfProfitCounter = 0;
+    //     uint firstHalfProfitCounter = 0;
+
+    //     for (uint i = 0; i < investors[msg.sender].investments[projectID].length; i++) {
+    //         uint investment = investors[msg.sender].investments[projectID][i].amount;
+    //         uint timestamp = investors[msg.sender].investments[projectID][i].timestamp;
+    //         uint withdrawTime = block.timestamp - timestamp;
+    //         uint secsInAYear = 31535000;
+    //         uint projectDuration = 20;
+    //         uint projectHalfLife = (projectDuration / 2) * secsInAYear;
+    //         if (withdrawTime > projectHalfLife) {
+    //             uint yUst = ((withdrawTime - projectHalfLife) * (9 * investment)) + (investment * projectHalfLife);
+    //             uint yAlt = 10 * secsInAYear * projectHalfLife;
+    //             uint result = ((investment * projectHalfLife) / (10 * secsInAYear)) +
+    //                 ((yUst * secsInAYear * 10 + investment * yAlt) * (withdrawTime - projectHalfLife)) /
+    //                 (20 * secsInAYear * yAlt);
+    //             secondHalfProfitCounter += result;
+    //             console.log("result2", result);
+    //         } else if (withdrawTime <= projectHalfLife) {
+    //             uint profitNumerator = investment * withdrawTime;
+    //             uint profitDenominator = 10 * secsInAYear;
+    //             uint result = profitNumerator / profitDenominator;
+    //             firstHalfProfitCounter += result;
+    //             console.log("result1", result);
+    //         }
+    //     }
+
+    //     uint netProfit = firstHalfProfitCounter + secondHalfProfitCounter;
+    //     return netProfit;
+    // }

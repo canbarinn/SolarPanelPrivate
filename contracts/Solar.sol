@@ -54,9 +54,6 @@ contract Solar {
         uint256 capacity,
         uint256 maxInvestmentsPerInvestor
     ) public onlyOwner {
-        // console.log("start: ", start);
-        // console.log("duration: ", duration);
-        //CAN:transaction sonucunu veren bir fonksiyonun returnle kullanılmasına gerek olmadığını gördüm
         projectIdCounter += 1;
         uint256 projectID = projectIdCounter;
         projects[projectID].APR = APR;
@@ -66,7 +63,7 @@ contract Solar {
         projects[projectID].maxInvestmentsPerInvestor = maxInvestmentsPerInvestor;
         projects[projectID].firstHalfProfitTotal =
             (capacity * duration * APR) /
-            (2 * SECONDS_IN_A_YEAR * APR_DENOMINATOR);
+            (2 * SECONDS_IN_A_YEAR * APR_DENOMINATOR); //CAN: burada bir sikinti var en son bakilacak
 
         emit ProjectCreated(projectID);
 
@@ -81,7 +78,10 @@ contract Solar {
 
         require(projectID <= projectIdCounter, "The project with this ID is non-existent!");
         require(getRemainingCapacity(projectID) >= amount, "Capacity is full!");
-        require(projects[projectID].maxInvestmentsPerInvestor >= amount, "You should invest less amount!");
+        require(
+            projects[projectID].maxInvestmentsPerInvestor >= investors[msg.sender].investments[projectID].length,
+            "You can't invest!"
+        );
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         projects[projectID].investors.push(msg.sender);
         investors[msg.sender].investments[projectID].push(Investment(block.timestamp, amount, 0));
@@ -91,12 +91,10 @@ contract Solar {
 
     function withdrawSingleProjectProfit(uint256 projectID) public {
         // let's give all the profits for all investments for projectID
-        uint totalProfit = calculateProfitDeniz(projectID);
+        uint totalProfit = calculateProfit(projectID);
         // console.log("TOTAL profitt: ", totalProfit);
 
         IERC20(token).transfer(msg.sender, totalProfit);
-        // accountun para hesabına bak
-        // profit given should be incremented
     }
 
     function withdrawProfit() public returns (uint allProfitCounter) {
@@ -129,42 +127,13 @@ contract Solar {
         return investors[investor].investments[projectID][0].timestamp;
     }
 
-    //For Testing Purposes------------------
-
-    function calculateProfit(uint projectID) public view returns (uint) {
-        console.log("zaman fonk", block.timestamp);
-        uint secondHalfProfitCounter = 0;
-        uint firstHalfProfitCounter = 0;
-
-        for (uint i = 0; i < investors[msg.sender].investments[projectID].length; i++) {
-            uint investment = investors[msg.sender].investments[projectID][i].amount;
-            uint timestamp = investors[msg.sender].investments[projectID][i].timestamp;
-            uint withdrawTime = block.timestamp - timestamp;
-            uint secsInAYear = 31535000;
-            uint projectDuration = 20;
-            uint projectHalfLife = (projectDuration / 2) * secsInAYear;
-            if (withdrawTime > projectHalfLife) {
-                uint yUst = ((withdrawTime - projectHalfLife) * (9 * investment)) + (investment * projectHalfLife);
-                uint yAlt = 10 * secsInAYear * projectHalfLife;
-                uint result = ((investment * projectHalfLife) / (10 * secsInAYear)) +
-                    ((yUst * secsInAYear * 10 + investment * yAlt) * (withdrawTime - projectHalfLife)) /
-                    (20 * secsInAYear * yAlt);
-                secondHalfProfitCounter += result;
-                console.log("result2", result);
-            } else if (withdrawTime <= projectHalfLife) {
-                uint profitNumerator = investment * withdrawTime;
-                uint profitDenominator = 10 * secsInAYear;
-                uint result = profitNumerator / profitDenominator;
-                firstHalfProfitCounter += result;
-                console.log("result1", result);
-            }
-        }
-
-        uint netProfit = firstHalfProfitCounter + secondHalfProfitCounter;
-        return netProfit;
+    function getInvestmentCount(address investor, uint256 projectID) public view returns (uint) {
+        return investors[investor].investments[projectID].length;
     }
 
-    function calculateProfitDeniz(uint256 projectID) public view returns (uint256 profit) {
+    //For Testing Purposes------------------
+
+    function calculateProfit(uint256 projectID) public returns (uint256 profit) {
         for (uint i = 0; i < investors[msg.sender].investments[projectID].length; i++) {
             uint256 profitGiven = investors[msg.sender].investments[projectID][i].profitGiven;
             uint256 investmentAmount = investors[msg.sender].investments[projectID][i].amount;
@@ -173,9 +142,16 @@ contract Solar {
             uint256 duration = projects[projectID].duration;
 
             profit +=
-                calculateFirstHalfProfit(projectID, investmentAmount, start, duration) +
-                calculateLastHalfProfit(projectID, investmentAmount, start, duration) -
+                calculateFirstHalfProfit(projectID, investmentAmount, duration) +
+                calculateLastHalfProfit(projectID, investmentAmount, duration) -
                 profitGiven;
+
+            investors[msg.sender].investments[projectID][i].profitGiven += profit;
+
+            console.log("test profits", calculateFirstHalfProfit(projectID, investmentAmount, duration));
+            console.log("test profits", calculateLastHalfProfit(projectID, investmentAmount, duration));
+
+            //CAN: profit giveni burada hesapliyorum yoksa ayri bir array ya da struct gerekecek
 
             //this should be inside withdraw // investors[msg.sender].investments[projectID][i].profitGiven += profit;
         }
@@ -184,47 +160,39 @@ contract Solar {
     function calculateFirstHalfProfit(
         uint256 projectID,
         uint256 investmentAmount,
-        uint256 start,
         uint256 duration
     ) public view returns (uint256 profit) {
-        uint256 halfTimestamp = start + (duration / 2);
+        uint256 halfTimestamp = projects[projectID].start + (duration / 2);
 
         uint256 totalProfit = (projects[projectID].firstHalfProfitTotal * investmentAmount) /
             projects[projectID].capacity;
 
         profit = block.timestamp > halfTimestamp
             ? totalProfit
-            : (totalProfit * (block.timestamp - start)) / (duration / 2);
-
-        // if (block.timestamp > halfTimestamp) {
-        //     profit = totalProfit;
-        // } else {
-        //     profit = (totalProfit * (block.timestamp - start)) / (duration / 2);
-        // }
+            : (totalProfit * (block.timestamp - projects[projectID].start)) / (duration / 2);
 
         console.log("first PROFIT: ", profit);
     }
 
     function calculateLastHalfProfit(
         uint256 projectID,
-        uint256 investmentAmount,
-        uint256 start,
+        uint256 investmentAmount, //CAN:this should be taken from the struct itself
         uint256 duration
-    ) public view returns (uint256 profit) {
-        uint256 halfTimestamp = start + (duration / 2);
-
+    ) public view returns (uint256 netProfit) {
+        uint256 halfDuration = duration / 2;
+        uint256 halfTimestamp = projects[projectID].start + (halfDuration);
         if (block.timestamp < halfTimestamp) {
             return 0;
         } else {
             uint256 elapsedTimeInSeconds = block.timestamp - halfTimestamp; // elapsed time after half-time
 
-            uint256 totalProfit = (projects[projectID].firstHalfProfitTotal * investmentAmount) /
-                (projects[projectID].capacity * 2);
+            uint256 profitRate = ((elapsedTimeInSeconds + halfDuration) *
+                elapsedTimeInSeconds *
+                projects[projectID].APR) / (2 * halfDuration * APR_DENOMINATOR);
+            netProfit = profitRate * investmentAmount;
 
-            profit = (totalProfit * elapsedTimeInSeconds * 2) / duration;
-            // this should be changed in to yamuk hesabi
-
-            console.log("last PROFIT: ", profit);
+            console.log("last PROFIT: ", netProfit);
+            return netProfit;
         }
     }
 }
