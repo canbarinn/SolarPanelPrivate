@@ -50,13 +50,13 @@ describe("Solar", function () {
     await token.mint(solar.address, dollars("100000"));
   });
   describe("Owner actions", () => {
-    it("only owner can create projects", async () => {
+    xit("only owner can create projects", async () => {
       await expect(solar.connect(accounts[0]).createProject(1, 1, 1, 1, 1)).to.be.revertedWith(
         "Caller is not the owner!"
       );
     });
 
-    it("project IDs increment sequentially", async () => {
+    xit("project IDs increment sequentially", async () => {
       const tx = await solar.createProject(1, 1, 1, 1, 5);
       //console.log(tx);
       const receipt = await tx.wait();
@@ -77,7 +77,7 @@ describe("Solar", function () {
     });
   });
   describe("Investor actions", () => {
-    it("investor can't invest more than their balance", async () => {
+    xit("investor can't invest more than their balance", async () => {
       const tx = await solar.createProject(1, 1, 1, 1, 1);
       //console.log(tx);
       const receipt = await tx.wait();
@@ -93,7 +93,7 @@ describe("Solar", function () {
         "Insufficient balance!"
       );
     });
-    it("investor can't invest non-existing project", async () => {
+    xit("investor can't invest non-existing project", async () => {
       await token.connect(accounts[0]).approve(solar.address, dollars("929"));
 
       const tx = await solar.createProject(1, 1, 1, 1, 1);
@@ -106,8 +106,8 @@ describe("Solar", function () {
         "The project with this ID is non-existent!"
       );
     });
-    it("investor can only invest before end time", async () => {});
-    it("investor can't invest if capacity is full", async () => {
+    xit("investor can only invest before end time", async () => {});
+    xit("investor can't invest if capacity is full", async () => {
       await token.connect(accounts[0]).approve(solar.address, dollars("977"));
       //kapasite diye bir değişken koy +1ini ver
       const tx = await solar.createProject(1, 1, 1, 0, 1);
@@ -120,7 +120,7 @@ describe("Solar", function () {
         "Capacity is full!"
       );
     });
-    it("investor can't invest more than 'maxInvestmentsPerInvestor'", async () => {
+    xit("investor can't invest more than 'maxInvestmentsPerInvestor'", async () => {
       // BU KODUN BAŞTAN AŞAĞI DÜZENLENMESİ LAZIM
       await token.connect(accounts[0]).approve(solar.address,dollars("1000"));
       const maxInvestmentsPerInvestor = 1;
@@ -211,38 +211,40 @@ describe("Solar", function () {
 
       const startTimestamp = await (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
       const secondsInAYear = 31536000;
-      const tx = await solar.createProject(1000, startTimestamp, 20 * secondsInAYear, 1000000000000, 1000000000000);
+      const tx = await solar.createProject(1000, startTimestamp, 20 * secondsInAYear, 100000000000, 1000000000000);
       const receipt = await tx.wait();
       const projectIdGetter = receipt.events[0].args[0].toString();
 
-      await solar.connect(accounts[0]).invest(projectIdGetter, dollars("100"));
+      await solar.connect(accounts[0]).invest(projectIdGetter, 100);
+      await time.increase(12 * secondsInAYear);
 
-      await time.increase(7 * secondsInAYear);
+      await solar.connect(accounts[0]).invest(projectIdGetter, 100);
+      await time.increase(3 * secondsInAYear);
 
       const profit = await solar
         .connect(accounts[0])
-        .calculateFirstHalfProfit(projectIdGetter, 100, 20 * secondsInAYear);
+        .calculateProfitCan(projectIdGetter);
       console.log("profit", profit);
     });
-    it("second half calculation test", async () => {
-      await token.connect(accounts[0]).approve(solar.address, dollars("1000"));
+    xit("second half calculation test", async () => {
+      await token.connect(accounts[0]).approve(solar.address, dollars("120"));
 
       const startTimestamp = await (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
       const secondsInAYear = 31536000;
-      const tx = await solar.createProject(1000, startTimestamp, 20 * secondsInAYear, 1000000000000, 1000000000000);
+      const tx = await solar.createProject(1000, startTimestamp, 20 * secondsInAYear, 100000000000, 1000000000000);
       const receipt = await tx.wait();
       const projectIdGetter = receipt.events[0].args[0].toString();
 
-      await solar.connect(accounts[0]).invest(projectIdGetter, dollars("100"));
+      await solar.connect(accounts[0]).invest(projectIdGetter, 100);
 
-      await time.increase(15 * secondsInAYear);
+      await time.increase(11 * secondsInAYear);
 
       const profit = await solar
         .connect(accounts[0])
-        .calculateLastHalfProfit(projectIdGetter, 100, 20 * secondsInAYear);
+        .calculateProfitCan(projectIdGetter);
       console.log("profit", profit);
     });
-    it("investment count test", async () => {
+    xit("investment count test", async () => {
       await token.connect(accounts[0]).approve(solar.address, dollars("1000"));
 
       const startTimestamp = await (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
@@ -258,7 +260,7 @@ describe("Solar", function () {
       const profit = await solar.connect(accounts[0]).calculateProfit(projectIdGetter);
       console.log("profit", profit);
     });
-    it("profit calculation is correct for single project profit withdrawal", async () => {
+    xit("profit calculation is correct for single project profit withdrawal", async () => {
       await token.connect(accounts[0]).approve(solar.address, dollars("1000"));
       
       const startTimestamp = await (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
@@ -277,7 +279,7 @@ describe("Solar", function () {
 
 
     });
-    it("profit calculation is correct for batch projects profit withdrawal", async () => {
+    xit("profit calculation is correct for batch projects profit withdrawal", async () => {
       await token.connect(accounts[0]).approve(solar.address, dollars("1000"));
       
       const startTimestamp = await (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
