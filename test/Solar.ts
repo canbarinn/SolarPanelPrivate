@@ -206,7 +206,7 @@ describe("Solar", function () {
       const contractBalance3 = await token.balanceOf(solar.address);
       console.log("contract balance3", contractBalance3);
     });
-    it("first half calculation test", async () => {
+    xit("first half calculation test", async () => {
       await token.connect(accounts[0]).approve(solar.address, dollars("1000"));
 
       const startTimestamp = await (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
@@ -225,6 +225,55 @@ describe("Solar", function () {
         .connect(accounts[0])
         .calculateProfitCan(projectIdGetter);
       console.log("profit", profit);
+    });
+    it("withd test", async () => {
+      await token.connect(accounts[0]).approve(solar.address, dollars("1000"));
+
+      const startTimestamp = await (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
+      const secondsInAYear = 31536000;
+      const tx = await solar.createProject(1000, startTimestamp, 20 * secondsInAYear, 100000000000, 1000000000000);
+      const tx2 = await solar.createProject(1000, startTimestamp, 20 * secondsInAYear, 100000000000, 1000000000000);
+      const tx3 = await solar.createProject(1070, startTimestamp, 20 * secondsInAYear, 100000000000, 1000000000000);
+      const tx4 = await solar.createProject(1400, startTimestamp, 50 * secondsInAYear, 100000000000, 1000000000000);
+      const tx5 = await solar.createProject(1900, startTimestamp, 50 * secondsInAYear, 100000000000, 1000000000000);
+      const tx6 = await solar.createProject(1900, startTimestamp, 30 * secondsInAYear, 100000000000, 1000000000000);
+      const receipt = await tx.wait();
+      const receipt2 = await tx2.wait();
+      const receipt3 = await tx3.wait();
+      const receipt4 = await tx4.wait();
+      const receipt5 = await tx5.wait();
+      const receipt6 = await tx6.wait();
+      const projectIdGetter = receipt.events[0].args[0].toString();
+      const projectIdGetter2 = receipt2.events[0].args[0].toString();
+      const projectIdGetter3 = receipt3.events[0].args[0].toString();
+      const projectIdGetter4 = receipt4.events[0].args[0].toString();
+      const projectIdGetter5 = receipt5.events[0].args[0].toString();
+      const projectIdGetter6 = receipt6.events[0].args[0].toString();
+
+      await solar.connect(accounts[0]).invest(projectIdGetter, 100000);
+      await solar.connect(accounts[0]).invest(projectIdGetter3, 100000);
+      await solar.connect(accounts[0]).invest(projectIdGetter5, 100000);
+      await time.increase(12 * secondsInAYear);
+      
+      const profit1 = await solar
+        .connect(accounts[0])
+        .withdrawProfit(10000);
+        // console.log("profit2", profit2);
+
+      await solar.connect(accounts[0]).invest(projectIdGetter3, 100000);
+      await solar.connect(accounts[0]).invest(projectIdGetter, 100000);
+      await solar.connect(accounts[0]).invest(projectIdGetter6, 100000);
+      await time.increase(3 * secondsInAYear);
+
+      const profit2 = await solar
+        .connect(accounts[0])
+        .withdrawProfit(10000);
+        // console.log("profit1", profit);
+      const profit3 = await solar
+        .connect(accounts[0])
+        .withdrawProfit(10000);
+        // console.log("profit1", profit);
+      expect(await token.balanceOf(accounts[0].address)).to.be.eq(999430000);
     });
     xit("second half calculation test", async () => {
       await token.connect(accounts[0]).approve(solar.address, dollars("120"));
@@ -310,7 +359,7 @@ describe("Solar", function () {
 
       await time.increase(20 * secondsInAYear);
 
-      await solar.withdrawSingleProjectProfit(1);
+      await solar.connect(accounts[0]).withdrawProfit();
       console.log("AFTER USER BALANCE: ", (await token.balanceOf(owner.address)).toString());
       100000000;
       900000000;

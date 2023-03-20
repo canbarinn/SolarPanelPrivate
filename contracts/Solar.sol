@@ -45,7 +45,6 @@ contract Solar {
         uint256 timestamp; // last time a withdrawal has been done. used for saving the initial investment timestamp
         uint256 amount; // amount of investment in tokens
         uint256 firstHalfTotalProfit;
-        uint256 potentialTotalProfit;
     }
 
     function createProject(
@@ -64,16 +63,10 @@ contract Solar {
         projects[projectID].maxInvestmentsPerInvestor = maxInvestmentsPerInvestor;
 
         emit ProjectCreated(projectID);
-
-        console.log("new project created with ID: ", projectID);
-        // let's use openzeppelin counter to determine project IDs
-        // we should calculate the total profit to be distributed and get it from creator
-        // otherwise we shouldn't let them create the project bc how are we gonna now that they'll bring money later on?
     }
 
     function invest(uint256 projectID, uint256 amount) public {
         require(IERC20(token).balanceOf(msg.sender) >= amount, "Insufficient balance!");
-
         require(projectID <= projectIdCounter, "The project with this ID is non-existent!");
         require(getRemainingCapacity(projectID) >= amount, "Capacity is full!");
         require(
@@ -81,110 +74,77 @@ contract Solar {
             "You can't invest!"
         );
         IERC20(token).transferFrom(msg.sender, address(this), amount);
-        projects[projectID].investors.push(msg.sender);
         investors[msg.sender].investedProjects.push(projectID);
-        console.log("investment processed");
+        projects[projectID].investors.push(msg.sender);
         uint256 firstHalfTotalProfit = (amount * projects[projectID].APR * (projects[projectID].duration / 2)) /
             (SECONDS_IN_A_YEAR * APR_DENOMINATOR);
-        uint256 potentialTotalProfit = (firstHalfTotalProfit * 3) / 2;
-        //console.log("first half:",firstHalfTotalProfit, "total:", potentialTotalProfit);
-        investors[msg.sender].investments[projectID].push(
-            Investment(block.timestamp, amount, firstHalfTotalProfit, potentialTotalProfit)
-        );
+        investors[msg.sender].investments[projectID].push(Investment(block.timestamp, amount, firstHalfTotalProfit));
     }
 
-    function withdrawSingleProjectProfit(uint256 projectID) public {
-        // // let's give all the profits for all investments for projectID
-        // uint totalProfit = calculateProfit(projectID);
-        // // console.log("TOTAL profitt: ", totalProfit);
-        // IERC20(token).transfer(msg.sender, totalProfit);
+    function withdrawProfit(uint256 amount) public {
+        uint256 availableProfit = getBalance();
+        require(availableProfit >= amount, "Unavailable amount!");
+        IERC20(token).transfer(msg.sender, amount);
+        investors[msg.sender].profitGiven += amount;
     }
 
-    function withdrawProfit() public returns (uint allProfitCounter) {
-        // // let's give all the profits for all investments for all projects
-        // // this function should loop through each projectID and calculateProfit(), and then aggregate
-        // for (uint projectID = 1; projectID <= projectIdCounter; projectID++) {
-        //     uint profitHolder = calculateProfit(projectID);
-        //     allProfitCounter += profitHolder;
-        // }
-        // console.log(allProfitCounter);
-        // IERC20(token).transfer(msg.sender, allProfitCounter);
+    function getBalance() public view returns (uint256 netBalance) {
+        uint256 balanceCounter;
+        for (uint256 ID = 1; ID <= projectIdCounter; ID++) {
+            balanceCounter += calculateProfit(ID);
+        }
+
+        netBalance = balanceCounter - investors[msg.sender].profitGiven;
     }
 
-    function getRemainingCapacity(uint256 projectID) public view returns (uint256) {
-        return projects[projectID].capacity - projects[projectID].totalInvestorAmount;
-    }
-
-    function getOwner() public view returns (address) {
-        return owner;
-    }
-
-    //For Testing Purposes------------------
-    function balanceOfInvestor(address investor, uint256 projectID) public view returns (uint) {
-        return investors[investor].investments[projectID][0].amount;
-    }
-
-    function getInvestmentTime(address investor, uint256 projectID) public view returns (uint) {
-        return investors[investor].investments[projectID][0].timestamp;
-    }
-
-    function getInvestmentCount(address investor, uint256 projectID) public view returns (uint) {
-        return investors[investor].investments[projectID].length;
-    }
-
-    function calculateProfitCan(uint256 projectID) public view returns (uint) {
+    function calculateProfit(uint256 projectID) public view returns (uint256 netProfit) {
         uint256 profitCounterLast;
         uint256 profitCounterFirst;
 
         for (uint256 index = 0; index < investors[msg.sender].investments[projectID].length; index++) {
             uint256 halfTimestamp = investors[msg.sender].investments[projectID][index].timestamp +
                 (projects[projectID].duration / 2);
-            console.log(halfTimestamp);
 
             if (block.timestamp > halfTimestamp) {
                 uint256 elapsedTimeInSeconds = block.timestamp - halfTimestamp;
-                console.log(elapsedTimeInSeconds);
-                profitCounterLast += calculateTotalProfitCanBA(projectID, elapsedTimeInSeconds, index);
-                console.log("prof", profitCounterLast);
+                profitCounterLast += calculateTotalProfit(projectID, elapsedTimeInSeconds, index);
             } else {
                 uint256 timePassed = block.timestamp - investors[msg.sender].investments[projectID][index].timestamp;
-                profitCounterFirst += calculateFirstHalfProfitCanBA(projectID, timePassed, index);
+                profitCounterFirst += calculateFirstHalfProfit(projectID, timePassed, index);
             }
-            console.log("profitCounterinfor", profitCounterLast);
-            console.log("profitCounterinfor", profitCounterFirst);
         }
-        console.log("profitCounteroutfor", profitCounterLast);
-        console.log("profitCounteroutfor", profitCounterFirst);
-        return profitCounterLast + profitCounterFirst;
+        netProfit = profitCounterLast + profitCounterFirst;
     }
 
-    function calculateTotalProfitCanBA(
+    function calculateTotalProfit(
         uint256 projectID,
         uint256 elapsedTimeInSeconds,
         uint256 index
-    ) public view returns (uint) {
+    ) public view returns (uint256 netProfit) {
         uint256 remainingProfitRate = ((((projects[projectID].duration - (2 * elapsedTimeInSeconds)) ** 2) *
             projects[projectID].APR) / (4 * projects[projectID].duration * SECONDS_IN_A_YEAR));
-        console.log("profit rate remaining:", remainingProfitRate);
         uint256 remainingProfit = (remainingProfitRate * investors[msg.sender].investments[projectID][index].amount) /
             APR_DENOMINATOR;
-        console.log("remaining profit", remainingProfit);
-        uint256 netProfit = investors[msg.sender].investments[projectID][index].potentialTotalProfit - remainingProfit;
-        console.log("net profit", netProfit);
-        console.log("net profit", netProfit);
-        return netProfit;
+        uint256 potentialTotalProfit = (investors[msg.sender].investments[projectID][index].firstHalfTotalProfit * 3) /
+            2;
+        netProfit = potentialTotalProfit - remainingProfit;
     }
 
-    function calculateFirstHalfProfitCanBA(
+    function calculateFirstHalfProfit(
         uint256 projectID,
         uint256 timePassed,
         uint256 index
-    ) public view returns (uint) {
-        // elapsed time after half-time
+    ) public view returns (uint256 netProfit) {
+        netProfit =
+            (investors[msg.sender].investments[projectID][index].amount * projects[projectID].APR * (timePassed)) /
+            (SECONDS_IN_A_YEAR * APR_DENOMINATOR);
+    }
 
-        uint256 netProfit = (investors[msg.sender].investments[projectID][index].amount *
-            projects[projectID].APR *
-            (timePassed)) / (SECONDS_IN_A_YEAR * APR_DENOMINATOR);
-        return netProfit;
+    function getRemainingCapacity(uint256 projectID) public view returns (uint256) {
+        return projects[projectID].capacity - projects[projectID].totalInvestorAmount;
+    }
+
+    function balanceOfInvestor(address investor, uint256 projectID) public view returns (uint256) {
+        return investors[investor].investments[projectID][0].amount;
     }
 }
