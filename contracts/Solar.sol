@@ -73,12 +73,14 @@ contract Solar {
             projects[projectID].maxInvestmentsPerInvestor >= investors[msg.sender].investments[projectID].length,
             "You can't invest!"
         );
+        require(block.timestamp - projects[projectID].start < projects[projectID].duration, "Project is no longer available.");
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         investors[msg.sender].investedProjects.push(projectID);
         projects[projectID].investors.push(msg.sender);
         uint256 firstHalfTotalProfit = (amount * projects[projectID].APR * (projects[projectID].duration / 2)) /
             (SECONDS_IN_A_YEAR * APR_DENOMINATOR);
         investors[msg.sender].investments[projectID].push(Investment(block.timestamp, amount, firstHalfTotalProfit));
+        projects[projectID].totalInvestorAmount += amount;
     }
 
     function withdrawProfit(uint256 amount) public {
@@ -100,6 +102,8 @@ contract Solar {
     function calculateProfit(uint256 projectID) public view returns (uint256 netProfit) {
         uint256 profitCounterLast;
         uint256 profitCounterFirst;
+
+        //LASTLYEXPLAIN THIS CALCULATION
 
         for (uint256 index = 0; index < investors[msg.sender].investments[projectID].length; index++) {
             uint256 halfTimestamp = investors[msg.sender].investments[projectID][index].timestamp +
