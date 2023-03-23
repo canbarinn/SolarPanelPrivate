@@ -26,13 +26,12 @@ describe("Solar", function () {
       (await currentTimestamp()) + 60 * 60 * 24 * 365 * 15,
       dollars("50"),
       3
-    ); 
+    );
 
     return projectID;
   };
 
   beforeEach(async () => {
-
     [owner, ...accounts] = await ethers.getSigners();
 
     const tokenFactory = await ethers.getContractFactory("MockToken");
@@ -83,7 +82,6 @@ describe("Solar", function () {
       const projectIdGetter2 = receipt2.events[0].args[0].toString();
 
       expect(+projectIdGetter1 + 1).to.be.eq(+projectIdGetter2);
-      
     });
   });
   describe("Investor actions", () => {
@@ -97,7 +95,7 @@ describe("Solar", function () {
       const maxInvestmentsPerInvestor = 1000;
 
       const tx = await solar.createProject(Apr, startTimestamp, projectDuration, capacity, maxInvestmentsPerInvestor);
-      
+
       const receipt = await tx.wait();
 
       const projectIdGetter = receipt.events[0].args[0].toString();
@@ -152,21 +150,23 @@ describe("Solar", function () {
       );
     });
     it("investor can't invest if capacity is full", async () => {
+      token.connect(accounts[0]).approve(solar.address, dollars("1000"));
       const SECONDS_IN_A_YEAR = 31536000;
 
       const Apr = 1000;
       const startTimestamp = await (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
       const projectDuration = 20 * SECONDS_IN_A_YEAR;
-      const capacity = dollars("100");
+      const capacity = dollars("10");
       const maxInvestmentsPerInvestor = 1000;
 
       const tx = await solar.createProject(Apr, startTimestamp, projectDuration, capacity, maxInvestmentsPerInvestor);
       const receipt = await tx.wait();
       const projectIdGetter = receipt.events[0].args[0].toString();
 
-      const investmentAmount = capacity.add(1);
+      await solar.connect(accounts[0]).invest(projectIdGetter, capacity);
 
-      expect(solar.connect(accounts[0]).invest(projectIdGetter, investmentAmount)).to.be.revertedWith(
+      const secondInvestmentAmount = 1;
+      expect(solar.connect(accounts[0]).invest(projectIdGetter, secondInvestmentAmount)).to.be.revertedWith(
         "Capacity is full!"
       );
     });
