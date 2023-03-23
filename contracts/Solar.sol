@@ -77,6 +77,8 @@ contract Solar {
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         investors[msg.sender].investedProjects.push(projectID);
         projects[projectID].investors.push(msg.sender);
+        
+        //firstHalfTotalProfit line calculates the profit amount investor get after first half is ended. This calculation is based on area of the graph.
         uint256 firstHalfTotalProfit = (amount * projects[projectID].APR * (projects[projectID].duration / 2)) /
             (SECONDS_IN_A_YEAR * APR_DENOMINATOR);
         investors[msg.sender].investments[projectID].push(Investment(block.timestamp, amount, firstHalfTotalProfit));
@@ -102,9 +104,7 @@ contract Solar {
     function calculateProfit(uint256 projectID) public view returns (uint256 netProfit) {
         uint256 profitCounterLast;
         uint256 profitCounterFirst;
-
-        //LASTLYEXPLAIN THIS CALCULATION
-
+        
         for (uint256 index = 0; index < investors[msg.sender].investments[projectID].length; index++) {
             uint256 halfTimestamp = investors[msg.sender].investments[projectID][index].timestamp +
                 (projects[projectID].duration / 2);
@@ -120,11 +120,13 @@ contract Solar {
         netProfit = profitCounterLast + profitCounterFirst;
     }
 
+    //calculateProfit function calculate area under graph after half time stamp of the project is passed. This function gives all the profit.
     function calculateTotalProfit(
         uint256 projectID,
         uint256 elapsedTimeInSeconds,
         uint256 index
     ) public view returns (uint256 netProfit) {
+        
         uint256 remainingProfitRate = ((((projects[projectID].duration - (2 * elapsedTimeInSeconds)) ** 2) *
             projects[projectID].APR) / (4 * projects[projectID].duration * SECONDS_IN_A_YEAR));
         uint256 remainingProfit = (remainingProfitRate * investors[msg.sender].investments[projectID][index].amount) /
@@ -134,6 +136,8 @@ contract Solar {
         netProfit = potentialTotalProfit - remainingProfit;
     }
 
+
+    //calculateFirstHalfProfit function calculate area under graph before its half time stamp is passed. 
     function calculateFirstHalfProfit(
         uint256 projectID,
         uint256 timePassed,
