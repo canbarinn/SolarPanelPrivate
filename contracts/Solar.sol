@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Solar {
     uint256 SECONDS_IN_A_YEAR = 31536000;
-    uint256 APR_DENOMINATOR = 100;
+    uint256 APR_DENOMINATOR = 10000;
 
     address public owner;
     address public token;
@@ -73,7 +73,7 @@ contract Solar {
             projects[projectID].maxInvestmentsPerInvestor >= investors[msg.sender].investments[projectID].length,
             "You can't invest!"
         );
-        require(block.timestamp - projects[projectID].start < projects[projectID].duration, "Project is no longer available.");
+        require(block.timestamp - projects[projectID].start <= projects[projectID].duration, "Project expired!");
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         investors[msg.sender].investedProjects.push(projectID);
         projects[projectID].investors.push(msg.sender);
